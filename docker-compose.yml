@@ -1,0 +1,177 @@
+version: "3.8^"
+services:
+  nginx:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - net1
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    working_dir: /var/www/html
+    user: backend
+    restart: unless-stopped
+    volumes:
+      - ./backend:/var/www/html
+#      uncomment to enable xdebug
+#      - ./docker/php/conf.d/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+#      - ./docker/php/conf.d/error_reporting.ini:/usr/local/etc/php/conf.d/error_reporting.ini
+#      - ./docker/php/conf.d/php.ini-development:/usr/local/etc/php/php.ini:ro
+    depends_on:
+      - nginx
+      - database
+    networks:
+      - net1
+    environment:
+      - APP_URL=http://localhost/
+      - APP_DEBUG=true
+      - DB_CONNECTION=mysql
+      - DB_HOST=database
+      - DB_PORT=3306
+      - DB_DATABASE=api
+      - DB_USERNAME=root
+      - DB_PASSWORD=example
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=mailhog
+      - MAIL_PORT=1025
+      - MAIL_USERNAME=''
+      - MAIL_PASSWORD=''
+      - MAIL_ENCRYPTION=null
+
+  backend-scheduler:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    working_dir: /var/www/html
+    user: backend
+    restart: unless-stopped
+    volumes:
+      - ./backend:/var/www/html
+    #      uncomment to enable xdebug
+    #      - ./docker/php/conf.d/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+    #      - ./docker/php/conf.d/error_reporting.ini:/usr/local/etc/php/conf.d/error_reporting.ini
+    #      - ./docker/php/conf.d/php.ini-development:/usr/local/etc/php/php.ini:ro
+    depends_on:
+      - nginx
+      - database
+    networks:
+      - net1
+    environment:
+      - APP_URL=http://localhost/
+      - APP_DEBUG=true
+      - DB_CONNECTION=mysql
+      - DB_HOST=database
+      - DB_PORT=3306
+      - DB_DATABASE=api
+      - DB_USERNAME=root
+      - DB_PASSWORD=example
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=mailhog
+      - MAIL_PORT=1025
+      - MAIL_USERNAME=''
+      - MAIL_PASSWORD=''
+      - MAIL_ENCRYPTION=null
+    command: php artisan schedule:work
+
+  backend-worker:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    working_dir: /var/www/html
+    user: backend
+    restart: unless-stopped
+    volumes:
+      - ./backend:/var/www/html
+    #      uncomment to enable xdebug
+    #      - ./docker/php/conf.d/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+    #      - ./docker/php/conf.d/error_reporting.ini:/usr/local/etc/php/conf.d/error_reporting.ini
+    #      - ./docker/php/conf.d/php.ini-development:/usr/local/etc/php/php.ini:ro
+    depends_on:
+      - nginx
+      - database
+    networks:
+      - net1
+    environment:
+      - APP_URL=http://localhost/
+      - APP_DEBUG=true
+      - DB_CONNECTION=mysql
+      - DB_HOST=database
+      - DB_PORT=3306
+      - DB_DATABASE=api
+      - DB_USERNAME=root
+      - DB_PASSWORD=example
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=mailhog
+      - MAIL_PORT=1025
+      - MAIL_USERNAME=''
+      - MAIL_PASSWORD=''
+      - MAIL_ENCRYPTION=null
+    entrypoint: "php artisan queue:work"
+
+  database:
+    restart: unless-stopped
+    image: mysql:8.0.35
+    networks:
+      - net1
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      - MYSQL_ROOT_PASSWORD=example
+      - MYSQL_DATABASE=api
+    ports:
+      - 3306:3306
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - net1
+
+  #  redis:
+  #    image: redis:alpine
+  #    container_name: redis
+  #    restart: unless-stopped
+  #    ports:
+  #      - "6379:6379"
+  #    networks:
+  #      - net1
+
+  phpmyadmin:
+    restart: unless-stopped
+    depends_on:
+      - database
+    image: phpmyadmin
+    networks:
+      - net1
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: database
+      MYSQL_ROOT_PASSWORD: example
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: 'mailhog'
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - net1
+
+volumes:
+  mysql_data:
+
+networks:
+  net1:
